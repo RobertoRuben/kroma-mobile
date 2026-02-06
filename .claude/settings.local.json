@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter pub get:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(dir:*)",
+      "Bash(cd:*)",
+      "Bash(powershell -Command \"cd E:\\\\kroma-flutter-app\\\\app; flutter analyze lib\\\\features\\\\evaluations\"\")",
+      "Bash(powershell -Command \"Set-Location E:\\\\kroma-flutter-app\\\\app; flutter analyze lib/features/evaluations/\":*)",
+      "Bash(powershell -Command \"Set-Location E:\\\\kroma-flutter-app\\\\app; flutter analyze lib/features/home/presentation/screens/main_screen.dart\")",
+      "Bash(powershell -Command \"Set-Location E:\\\\kroma-flutter-app\\\\app; flutter analyze lib/\")"
+    ]
+  }
+}

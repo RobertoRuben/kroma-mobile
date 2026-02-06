@@ -115,8 +115,8 @@ class YOLODetectionPainter extends CustomPainter {
 
     final labelRect = Rect.fromLTRB(
       detection.boundingBox.left,
-      detection.boundingBox.top - textPainter.height - 4,
-      detection.boundingBox.left + textPainter.width + 8,
+      detection.boundingBox.top - textPainter.height - 2,
+      detection.boundingBox.left + textPainter.width + 4,
       detection.boundingBox.top,
     );
 
@@ -128,7 +128,7 @@ class YOLODetectionPainter extends CustomPainter {
     textPainter.paint(
       canvas,
       Offset(
-        detection.boundingBox.left + 4,
+        detection.boundingBox.left + 2,
         detection.boundingBox.top - textPainter.height,
       ),
     );
@@ -164,10 +164,10 @@ class YOLOOverlayTheme {
 
   const YOLOOverlayTheme({
     this.boundingBoxColor = Colors.red,
-    this.boundingBoxWidth = 2.0,
+    this.boundingBoxWidth = 0.5,
     this.textColor = Colors.white,
-    this.textSize = 12.0,
-    this.textWeight = FontWeight.bold,
+    this.textSize = 7.0,
+    this.textWeight = FontWeight.normal,
     this.labelBackgroundColor = Colors.black54,
   });
 

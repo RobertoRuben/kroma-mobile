@@ -175,59 +175,33 @@ class ObjectDetector(
         }
     }
     
-    // Configure for Float16 models - XNNPack optimized for stable 20+ FPS
+    // Configure for Float16 models - XNNPack primary (YOLO detector has too many
+    // GPU-unsupported ops; GPU only handles ~14/993 nodes, causing fragmented partitions
+    // and corrupted post-processing output. Classifier uses GPU successfully.)
     private fun Interpreter.Options.configureForFloat16() {
         val numCores = Runtime.getRuntime().availableProcessors()
-        // Use all available cores for maximum performance
         setNumThreads(numCores)
         try {
             setUseXNNPACK(true)
             accelerationType = "XNNPack (FP16, $numCores threads)"
-            Log.d(TAG, "✅ XNNPack configured for float16 with $numCores threads")
+            Log.d(TAG, "✅ XNNPack configured for float16 detector with $numCores threads")
         } catch (e: Exception) {
-            Log.w(TAG, "XNNPack failed: ${e.message}, trying GPU...")
-            try {
-                val gpuOptions = GpuDelegate.Options().apply {
-                    setPrecisionLossAllowed(true)
-                    setQuantizedModelsAllowed(false)
-                    setInferencePreference(GpuDelegate.Options.INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER)
-                }
-                gpuDelegate = GpuDelegate(gpuOptions)
-                addDelegate(gpuDelegate)
-                accelerationType = "GPU (FP16)"
-                Log.d(TAG, "✅ GPU delegate configured for float16")
-            } catch (e2: Exception) {
-                accelerationType = "CPU"
-                Log.w(TAG, "GPU also failed: ${e2.message}, using basic CPU")
-            }
+            Log.w(TAG, "XNNPack failed for FP16: ${e.message}, using basic CPU...")
+            accelerationType = "CPU (FP16, $numCores threads)"
         }
     }
     
-    // Configure for Float32 models - XNNPack optimized for stable 20 FPS
+    // Configure for Float32 models - XNNPack primary (same GPU partitioning issue as FP16)
     private fun Interpreter.Options.configureForFloat32() {
         val numCores = Runtime.getRuntime().availableProcessors()
-        // Use all available cores for maximum performance
         setNumThreads(numCores)
         try {
             setUseXNNPACK(true)
             accelerationType = "XNNPack (FP32, $numCores threads)"
-            Log.d(TAG, "✅ XNNPack configured for float32 with $numCores threads")
+            Log.d(TAG, "✅ XNNPack configured for float32 detector with $numCores threads")
         } catch (e: Exception) {
-            Log.w(TAG, "XNNPack failed: ${e.message}, trying GPU...")
-            try {
-                val gpuOptions = GpuDelegate.Options().apply {
-                    setPrecisionLossAllowed(true)
-                    setQuantizedModelsAllowed(false)
-                    setInferencePreference(GpuDelegate.Options.INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER)
-                }
-                gpuDelegate = GpuDelegate(gpuOptions)
-                addDelegate(gpuDelegate)
-                accelerationType = "GPU (FP32)"
-                Log.d(TAG, "✅ GPU delegate configured for float32")
-            } catch (e2: Exception) {
-                accelerationType = "CPU"
-                Log.w(TAG, "GPU also failed: ${e2.message}, using basic CPU")
-            }
+            Log.w(TAG, "XNNPack failed for FP32: ${e.message}, using basic CPU...")
+            accelerationType = "CPU (FP32, $numCores threads)"
         }
     }
 
@@ -377,8 +351,8 @@ class ObjectDetector(
             val warmupBuffer = warmupProcessed.buffer
             warmupBuffer.rewind()
             
-            // Run 5 warmup inferences for better NPU stabilization
-            val warmupCount = 5
+            // Run 2 warmup inferences (reduced from 5 to avoid ANR)
+            val warmupCount = 2
             repeat(warmupCount) {
                 interpreter.run(warmupBuffer, rawOutput)
                 warmupBuffer.rewind()

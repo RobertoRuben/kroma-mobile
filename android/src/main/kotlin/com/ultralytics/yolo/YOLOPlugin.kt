@@ -206,23 +206,25 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       }
 
       "predictSingleImage" -> {
-        try {
-          val args = call.arguments as? Map<*, *>
-          val imageData = args?.get("image") as? ByteArray
-          val confidenceThreshold = args?.get("confidenceThreshold") as? Double
-          val iouThreshold = args?.get("iouThreshold") as? Double
-          val instanceId = args?.get("instanceId") as? String ?: "default"
+        val args = call.arguments as? Map<*, *>
+        val imageData = args?.get("image") as? ByteArray
+        val confidenceThreshold = args?.get("confidenceThreshold") as? Double
+        val iouThreshold = args?.get("iouThreshold") as? Double
+        val instanceId = args?.get("instanceId") as? String ?: "default"
 
-          if (imageData == null) {
-            result.error("bad_args", "No image data", null)
-            return
-          }
-          
+        if (imageData == null) {
+          result.error("bad_args", "No image data", null)
+          return
+        }
+
+        // Run inference on IO thread to avoid ANR
+        GlobalScope.launch(Dispatchers.IO) {
+         try {
           // Convert byte array to bitmap
           val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
           if (bitmap == null) {
-            result.error("image_error", "Failed to decode image", null)
-            return
+            withContext(Dispatchers.Main) { result.error("image_error", "Failed to decode image", null) }
+            return@launch
           }
           
           // Run inference using instance manager
@@ -234,8 +236,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           )
           
           if (yoloResult == null) {
-            result.error("MODEL_NOT_LOADED", "Model has not been loaded. Call loadModel() first.", null)
-            return
+            withContext(Dispatchers.Main) { result.error("MODEL_NOT_LOADED", "Model has not been loaded. Call loadModel() first.", null) }
+            return@launch
           }
           
           // Create response
@@ -374,11 +376,12 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           // Include inference speed
           response["speed"] = yoloResult.speed
           
-          result.success(response)
-        } catch (e: Exception) {
+          withContext(Dispatchers.Main) { result.success(response) }
+         } catch (e: Exception) {
           Log.e(TAG, "Error during prediction", e)
-          result.error("prediction_error", "Error during prediction: ${e.message}", null)
-        }
+          withContext(Dispatchers.Main) { result.error("prediction_error", "Error during prediction: ${e.message}", null) }
+         }
+        } // end GlobalScope.launch
       }
 
       "checkModelExists" -> {

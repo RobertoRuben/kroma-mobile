@@ -31,13 +31,15 @@ class CameraInferenceScreen extends StatefulWidget {
   State<CameraInferenceScreen> createState() => _CameraInferenceScreenState();
 }
 
-class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
+class _CameraInferenceScreenState extends State<CameraInferenceScreen>
+    with WidgetsBindingObserver {
   late final CameraInferenceController _controller;
   int _rebuildKey = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = CameraInferenceController(
       initialModel: widget.initialModel,
       initialConfidence: widget.initialConfidence,
@@ -50,25 +52,16 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Check if route is current (we've navigated back to this screen)
-    final route = ModalRoute.of(context);
-    if (route?.isCurrent == true) {
-      // Force rebuild when navigating back to ensure camera restarts
-      // The rebuild will create a new YOLOView which will automatically start the camera
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _rebuildKey++;
-          });
-        }
-      });
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Only rebuild camera when app resumes from background
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() => _rebuildKey++);
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }

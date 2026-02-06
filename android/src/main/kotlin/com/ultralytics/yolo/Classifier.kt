@@ -32,18 +32,33 @@ class Classifier(
 ) : BasePredictor() {
 
     private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
-        // If no custom options provided, use default threads
+        val numCores = Runtime.getRuntime().availableProcessors()
+        
+        // If no custom options provided, use optimal thread count
         if (customOptions == null) {
-            setNumThreads(4)
+            setNumThreads(numCores.coerceIn(2, 4))
         }
         
-        // Add GPU delegate if requested
+        // Enable XNNPack for faster CPU execution
+        try {
+            setUseXNNPACK(true)
+        } catch (e: Exception) {
+            Log.d(TAG, "XNNPack not available: ${e.message}")
+        }
+        
+        // Add optimized GPU delegate if requested
         if (useGpu) {
             try {
-                addDelegate(GpuDelegate())
-                Log.d(TAG, "GPU delegate is used.")
+                val gpuOptions = GpuDelegate.Options().apply {
+                    setPrecisionLossAllowed(true)  // FP16 precision for faster inference
+                    setInferencePreference(GpuDelegate.Options.INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER)
+                }
+                addDelegate(GpuDelegate(gpuOptions))
+                // Reduce CPU threads when GPU handles compute
+                setNumThreads(2.coerceAtMost(numCores))
+                Log.d(TAG, "GPU delegate configured with FP16 precision + FAST_SINGLE_ANSWER")
             } catch (e: Exception) {
-                Log.e(TAG, "GPU delegate error: ${e.message}")
+                Log.e(TAG, "GPU delegate error: ${e.message}, using XNNPack CPU fallback")
             }
         }
     }
@@ -90,6 +105,7 @@ class Classifier(
         }
 
         interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter.allocateTensors()  // Pre-allocate tensors for faster first inference
 
         val inputShape = interpreter.getInputTensor(0).shape()
         val inBatch = inputShape[0]
@@ -158,16 +174,52 @@ class Classifier(
             .add(CastOp(DataType.FLOAT32))
             .build()
             
-        // For single images (no rotation)
+        // For single images (no rotation) - NEAREST_NEIGHBOR is 2x faster for evaluation crops
         imageProcessorSingleImage = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
             .add(CastOp(DataType.FLOAT32))
             .build()
         }
 
         Log.d(TAG, "Classifier initialized.")
+
+        // Warmup: 1 inference run to avoid cold-start latency on first classification
+        performWarmup(inWidth, inHeight)
     }
+
+    /**
+     * Runs a single warmup inference to prime the TFLite interpreter
+     */
+    private fun performWarmup(width: Int, height: Int) {
+        try {
+            if (isGrayscaleModel) {
+                // Create a small dummy grayscale buffer
+                val dummyBuffer = java.nio.ByteBuffer.allocateDirect(width * height * 4)
+                dummyBuffer.order(java.nio.ByteOrder.nativeOrder())
+                val outputArray = Array(1) { FloatArray(numClass) }
+                interpreter.run(dummyBuffer, outputArray)
+                Log.d(TAG, "Warmup completed (1 run, grayscale)")
+            } else {
+                val dummyBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val warmupTensorImage = org.tensorflow.lite.support.image.TensorImage(org.tensorflow.lite.DataType.FLOAT32)
+                warmupTensorImage.load(dummyBitmap)
+                val warmupProcessed = imageProcessorSingleImage.process(warmupTensorImage)
+                val warmupBuffer = warmupProcessed.buffer
+                warmupBuffer.rewind()
+                val outputArray = Array(1) { FloatArray(numClass) }
+                interpreter.run(warmupBuffer, outputArray)
+                dummyBitmap.recycle()
+                Log.d(TAG, "Warmup completed (1 run, RGB)")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Classifier warmup failed (non-critical): ${e.message}")
+        }
+    }
+
+    // Pre-allocated output buffer to avoid GC pressure on each predict() call
+    private lateinit var reusableOutputArray: Array<FloatArray>
+    private var reusableTensorImage: TensorImage? = null
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
@@ -193,11 +245,10 @@ class Classifier(
                 inputMean = inputMean,
                 inputStd = inputStd
             )
-            Log.d(TAG, "Using grayscale processing for 1-channel model")
         } else {
-            // Use standard RGB processing for 3-channel models
-        val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(bitmap)
+            // Reuse TensorImage to avoid allocation per frame
+            val tensorImage = reusableTensorImage ?: TensorImage(DataType.FLOAT32).also { reusableTensorImage = it }
+            tensorImage.load(bitmap)
         
         // Choose appropriate processor based on input source and orientation
         val processedImage = if (rotateForCamera) {
@@ -217,15 +268,17 @@ class Classifier(
             imageProcessorSingleImage.process(tensorImage)
         }
             inputBuffer = processedImage.buffer
-            Log.d(TAG, "Using RGB processing for 3-channel model")
         }
 
-        val outputArray = Array(1) { FloatArray(numClass) }
-        interpreter.run(inputBuffer, outputArray)
+        // Reuse output array to reduce GC pressure
+        if (!::reusableOutputArray.isInitialized || reusableOutputArray[0].size != numClass) {
+            reusableOutputArray = Array(1) { FloatArray(numClass) }
+        }
+        interpreter.run(inputBuffer, reusableOutputArray)
 
         updateTiming()
 
-        val scores = outputArray[0]   // FloatArray(numClass)
+        val scores = reusableOutputArray[0]   // FloatArray(numClass)
         val indexedScores = scores.mapIndexed { index, score -> index to score }
         val sorted = indexedScores.sortedByDescending { it.second }
 

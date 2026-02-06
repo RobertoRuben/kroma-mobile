@@ -69,7 +69,7 @@ class _CameraInferenceContentState extends State<CameraInferenceContent> {
             controller: controller.yoloController,
             modelPath: modelPath,
             task: controller.selectedModel.task,
-            streamingConfig: const YOLOStreamingConfig.minimal(),
+            streamingConfig: YOLOStreamingConfig.highPerformance(),
             onResult: controller.onDetectionResults,
             onPerformanceMetrics: (metrics) =>
                 controller.onPerformanceMetrics(metrics.fps),

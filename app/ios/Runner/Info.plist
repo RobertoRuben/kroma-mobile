@@ -27,7 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string></string>
+	<string>Esta app necesita acceso a la cámara para detectar objetos</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Esta app necesita acceso para guardar imágenes en tu galería</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

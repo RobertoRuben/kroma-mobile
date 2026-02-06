@@ -16,32 +16,34 @@ class ModelLoadingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Container(
-      color: AppColors.background,
+      color: context.backgroundColor,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Loading animation
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(24),
+                gradient: AppColors.heroGradient,
+                borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 20,
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 28,
                     spreadRadius: 2,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
               child: const Icon(Icons.eco, color: Colors.white, size: 48),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
             // Progress indicator
             SizedBox(
-              width: 200,
+              width: 220,
               child: Column(
                 children: [
                   if (downloadProgress > 0)
@@ -49,7 +51,9 @@ class ModelLoadingOverlay extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: downloadProgress,
-                        backgroundColor: AppColors.secondary,
+                        backgroundColor: isDark
+                            ? AppColors.borderDark
+                            : AppColors.secondary,
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           AppColors.primary,
                         ),
@@ -62,25 +66,27 @@ class ModelLoadingOverlay extends StatelessWidget {
                         AppColors.primary,
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
                     loadingMessage.isNotEmpty
                         ? loadingMessage
                         : 'Cargando modelo...',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
+                    style: TextStyle(
+                      color: context.textSecondaryColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   if (downloadProgress > 0) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
                       '${(downloadProgress * 100).toInt()}%',
                       style: const TextStyle(
                         color: AppColors.primary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ],

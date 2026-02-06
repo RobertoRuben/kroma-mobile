@@ -5,6 +5,11 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Manages multiple YOLO instances with unique IDs
@@ -23,6 +28,9 @@ object YOLOInstanceManager {
 
     // Store classifier options per instance
     private val instanceOptions = mutableMapOf<String, Map<String, Any>>()
+
+    // Coroutine scope for background model loading (avoids ANR on main thread)
+    private val loadingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     init {
         // Initialize default instance for backward compatibility
@@ -96,24 +104,33 @@ object YOLOInstanceManager {
         // Start loading
         loadingStates[instanceId] = true
 
-        try {
-            // Store classifier options if provided
-            classifierOptions?.let { options ->
-                instanceOptions[instanceId] = options
-                Log.d(TAG, "Stored classifier options for instance $instanceId: $options")
-            }
+        // Load model on IO thread to avoid ANR on main thread
+        loadingScope.launch {
+            try {
+                // Store classifier options if provided
+                classifierOptions?.let { options ->
+                    instanceOptions[instanceId] = options
+                    Log.d(TAG, "Stored classifier options for instance $instanceId: $options")
+                }
 
-            // Create YOLO instance with the specified parameters
-            val yolo = YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
-            instances[instanceId] = yolo
-            loadingStates[instanceId] = false
-            Log.d(TAG, "Model loaded successfully for instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            loadingStates[instanceId] = false
-            instanceOptions.remove(instanceId) // Clean up options on failure
-            Log.e(TAG, "Failed to load model for instance $instanceId: ${e.message}")
-            callback(Result.failure(e))
+                // Create YOLO instance on background thread
+                val yolo = YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
+                // Force lazy predictor initialization on IO thread (warmup runs here)
+                yolo.predictorInstance()
+                instances[instanceId] = yolo
+                loadingStates[instanceId] = false
+                Log.d(TAG, "Model loaded successfully for instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                loadingStates[instanceId] = false
+                instanceOptions.remove(instanceId) // Clean up options on failure
+                Log.e(TAG, "Failed to load model for instance $instanceId: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
         }
     }
 

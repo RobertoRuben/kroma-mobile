@@ -61,7 +61,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       flexibleSpace: Container(
         decoration: BoxDecoration(
-          gradient: elevation == 0 ? AppColors.primaryGradient : null,
+          gradient: elevation == 0 ? AppColors.heroGradient : null,
         ),
       ),
     );
@@ -72,7 +72,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     if (showBackButton && Navigator.canPop(context)) {
       return IconButton(
-        icon: Icon(Icons.arrow_back_ios_new, color: fgColor),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, color: fgColor, size: 20),
         onPressed: onBackPressed ?? () => Navigator.pop(context),
       );
     }
@@ -87,8 +87,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(
           color: fgColor,
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
         ),
       );
     }
@@ -103,15 +103,16 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           title,
           style: TextStyle(
             color: fgColor,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           subtitle!,
           style: TextStyle(
-            color: fgColor.withValues(alpha: 0.8),
+            color: fgColor.withValues(alpha: 0.75),
             fontSize: 12,
             fontWeight: FontWeight.w400,
           ),

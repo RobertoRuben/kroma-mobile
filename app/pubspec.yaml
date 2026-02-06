@@ -13,9 +13,11 @@ dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
   image_picker: ^0.8.7
+  gal: ^2.3.0
   path_provider: ^2.0.0
   archive: ^3.0.0
   http: ^1.0.0
+  permission_handler: ^11.3.1
 
   ultralytics_yolo:
     path: ../
@@ -37,6 +39,7 @@ flutter:
     - assets/models/
     - assets/logo.png
     - assets/applogo.png
+    - lib/assets/app-logo.png
 
 flutter_launcher_icons:
   android: true

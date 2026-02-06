@@ -33,11 +33,22 @@ class EvaluationScreen extends StatelessWidget {
                 // Defaulting to int8 and 0.5 confidence as per previous Home defaults
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => CameraInferenceScreen(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        CameraInferenceScreen(
                       initialModel: selectedModel,
                       initialConfidence: confidenceThreshold,
                     ),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOutCubic;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+                      return FadeTransition(
+                        opacity: curvedAnimation,
+                        child: child,
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 200),
+                    reverseTransitionDuration: const Duration(milliseconds: 150),
                   ),
                 );
               },

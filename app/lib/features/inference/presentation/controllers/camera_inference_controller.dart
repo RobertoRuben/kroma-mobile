@@ -3,6 +3,7 @@ import 'package:ultralytics_yolo/models/yolo_result.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/utils/error_handler.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:ultralytics_yolo_example/shared/models/models.dart';
 import 'package:ultralytics_yolo_example/features/inference/data/model_manager.dart';
 
@@ -77,12 +78,23 @@ class CameraInferenceController extends ChangeNotifier {
   YOLOViewController get yoloController => _yoloController;
 
   Future<void> initialize() async {
+    await _requestCameraPermission();
     await _loadModelForPlatform();
     _yoloController.setThresholds(
       confidenceThreshold: _confidenceThreshold,
       iouThreshold: _iouThreshold,
       numItemsThreshold: _numItemsThreshold,
     );
+  }
+
+  Future<void> _requestCameraPermission() async {
+    final status = await Permission.camera.status;
+    if (!status.isGranted) {
+      final result = await Permission.camera.request();
+      if (!result.isGranted) {
+        throw Exception('Camera permission is required to use this feature');
+      }
+    }
   }
 
   void onDetectionResults(List<YOLOResult> results) {
@@ -92,13 +104,18 @@ class CameraInferenceController extends ChangeNotifier {
     final now = DateTime.now();
     final elapsed = now.difference(_lastFpsUpdate).inMilliseconds;
 
-    if (elapsed >= 1000) {
+    // Update FPS calculation every 500ms for smoother display
+    if (elapsed >= 500) {
       _currentFps = _frameCount * 1000 / elapsed;
       _frameCount = 0;
       _lastFpsUpdate = now;
-    }
 
-    if (_detectionCount != results.length) {
+      // Only notify when detection count or FPS actually changed
+      if (_detectionCount != results.length) {
+        _detectionCount = results.length;
+      }
+      notifyListeners();
+    } else if (_detectionCount != results.length) {
       _detectionCount = results.length;
       notifyListeners();
     }
@@ -107,7 +124,8 @@ class CameraInferenceController extends ChangeNotifier {
   void onPerformanceMetrics(double fps) {
     if (_isDisposed) return;
 
-    if ((_currentFps - fps).abs() > 0.1) {
+    // Only notify for significant FPS changes (>1.0 difference) to reduce rebuilds
+    if ((_currentFps - fps).abs() > 1.0) {
       _currentFps = fps;
       notifyListeners();
     }
