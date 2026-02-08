@@ -5,8 +5,11 @@ package com.ultralytics.yolo
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.RectF
 import android.util.Log
+import androidx.exifinterface.media.ExifInterface
+import java.io.ByteArrayInputStream
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -22,6 +25,48 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.RequestPermissionsResultListener {
+
+  /**
+   * Decode a byte array into a Bitmap with correct EXIF orientation applied.
+   * BitmapFactory.decodeByteArray ignores EXIF rotation metadata, which causes
+   * portrait images to have swapped dimensions. This function reads the EXIF
+   * orientation and rotates/flips the bitmap accordingly.
+   */
+  private fun decodeByteArrayWithExif(imageData: ByteArray): Bitmap? {
+    val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size) ?: return null
+
+    val orientation = try {
+      val exif = ExifInterface(ByteArrayInputStream(imageData))
+      exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+    } catch (e: Exception) {
+      ExifInterface.ORIENTATION_NORMAL
+    }
+
+    if (orientation == ExifInterface.ORIENTATION_NORMAL || orientation == ExifInterface.ORIENTATION_UNDEFINED) {
+      return bitmap
+    }
+
+    val matrix = Matrix()
+    when (orientation) {
+      ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+      ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+      ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+      ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+      ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+      ExifInterface.ORIENTATION_TRANSPOSE -> {
+        matrix.postRotate(90f)
+        matrix.preScale(-1f, 1f)
+      }
+      ExifInterface.ORIENTATION_TRANSVERSE -> {
+        matrix.postRotate(270f)
+        matrix.preScale(-1f, 1f)
+      }
+    }
+
+    val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    if (rotated !== bitmap) bitmap.recycle()
+    return rotated
+  }
 
   private lateinit var methodChannel: MethodChannel
   private val instanceChannels = mutableMapOf<String, MethodChannel>()
@@ -220,8 +265,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         // Run inference on IO thread to avoid ANR
         GlobalScope.launch(Dispatchers.IO) {
          try {
-          // Convert byte array to bitmap
-          val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+          // Convert byte array to bitmap with EXIF orientation applied
+          val bitmap = decodeByteArrayWithExif(imageData)
           if (bitmap == null) {
             withContext(Dispatchers.Main) { result.error("image_error", "Failed to decode image", null) }
             return@launch

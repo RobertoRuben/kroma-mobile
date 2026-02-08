@@ -1,2 +1,10 @@
 export 'classification_result_view.dart';
+export 'crop_action_bar.dart';
 export 'crop_gallery.dart';
+export 'crop_item_card.dart';
+export 'crop_results_list.dart';
+export 'global_stats_section.dart';
+export 'image_picker_sheet.dart';
+export 'pagination_bar.dart';
+export 'result_image_nav_bar.dart';
+export 'stats_section.dart';
