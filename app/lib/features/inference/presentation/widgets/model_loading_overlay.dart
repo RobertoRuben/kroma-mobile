@@ -24,21 +24,17 @@ class ModelLoadingOverlay extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Loading animation
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                gradient: AppColors.heroGradient,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 28,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+            // App Logo
+            // App Logo
+            ClipOval(
+              child: Image.asset(
+                isDark
+                    ? 'lib/assets/app-logo-dark.png'
+                    : 'lib/assets/app-logo.png',
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
               ),
-              child: const Icon(Icons.eco, color: Colors.white, size: 48),
             ),
             const SizedBox(height: 36),
             // Progress indicator

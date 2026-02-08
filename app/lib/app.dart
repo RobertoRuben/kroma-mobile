@@ -34,9 +34,9 @@ class _MyAppState extends State<MyApp> {
       builder: (context, child) {
         return MediaQuery(
           // Prevent text scaling from causing layout jumps
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.noScaling,
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.noScaling),
           child: child!,
         );
       },
@@ -110,9 +110,7 @@ class _MyAppState extends State<MyApp> {
       ),
       // Follow system theme
       themeMode: ThemeMode.system,
-      home: _isInitialized
-          ? const MainScreen()
-          : const _LoadingScreen(),
+      home: _isInitialized ? const MainScreen() : const _LoadingScreen(),
     );
   }
 }
@@ -132,24 +130,16 @@ class _LoadingScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Logo with gradient background
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                gradient: AppColors.heroGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 32,
-                    spreadRadius: 4,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.eco_rounded,
-                size: 56,
-                color: Colors.white,
+            // App Logo with spherical/modern shape
+            // App Logo with spherical/modern shape
+            ClipOval(
+              child: Image.asset(
+                isDark
+                    ? 'lib/assets/app-logo-dark.png'
+                    : 'lib/assets/app-logo.png',
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(height: 36),
@@ -158,7 +148,9 @@ class _LoadingScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w800,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                color: isDark
+                    ? AppColors.textPrimaryDark
+                    : AppColors.textPrimary,
                 letterSpacing: -0.8,
               ),
             ),
@@ -168,7 +160,9 @@ class _LoadingScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
@@ -190,7 +184,9 @@ class _LoadingScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondary,
                   ),
                 );
               },
