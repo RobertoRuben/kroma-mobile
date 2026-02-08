@@ -79,4 +79,18 @@ class ClassificationResult {
 
   /// Get display label with confidence
   String get displayLabel => '$className ${(confidence * 100).toStringAsFixed(0)}%';
+
+  /// Color associated with the maturity classification
+  Color get maturityColor => maturityColorFor(className);
+
+  /// Static helper to get maturity color from a class name string
+  static Color maturityColorFor(String name) {
+    return switch (name.toLowerCase()) {
+      'green' => const Color(0xFF4CAF50),
+      'red' => const Color(0xFFE53935),
+      'brown' => const Color(0xFF795548),
+      'turning' => const Color(0xFFFFA726),
+      _ => const Color(0xFF9E9E9E),
+    };
+  }
 }

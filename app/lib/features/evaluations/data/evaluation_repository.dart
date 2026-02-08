@@ -221,15 +221,18 @@ class EvaluationRepository {
       canvas.drawImage(image, Offset.zero, Paint());
 
       // Draw bounding boxes and labels for selected crops only
-      final boxPaint = Paint()
-        ..color = const Color(0xFFFF0000)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-
-      final backgroundPaint = Paint()..color = const Color(0xDD000000);
-
       for (final crop in crops) {
         if (!crop.isSelected) continue;
+
+        final maturityColor =
+            crop.classificationResult?.maturityColor ?? const Color(0xFFFF0000);
+
+        final boxPaint = Paint()
+          ..color = maturityColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0;
+
+        final backgroundPaint = Paint()..color = maturityColor.withValues(alpha: 0.85);
 
         // Convert normalized to pixel coordinates
         final left = crop.boundingBox.left * imageWidth;
