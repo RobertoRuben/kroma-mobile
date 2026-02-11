@@ -35,20 +35,19 @@ class EvaluationRepository {
 
     final annotatedImage = result['annotatedImage'] as Uint8List?;
 
-    // Decode original image to get dimensions
+    // Decode original image ONCE for dimensions and crop extraction
     final codec = await ui.instantiateImageCodec(imageBytes);
     final frame = await codec.getNextFrame();
-    final image = frame.image;
-    final imageWidth = image.width;
-    final imageHeight = image.height;
-    image.dispose();
+    final decodedImage = frame.image;
+    final imageWidth = decodedImage.width;
+    final imageHeight = decodedImage.height;
 
-    // Extract crops from each detection
+    // Extract crops from each detection, reusing the single decoded image
     final crops = <CropItem>[];
     for (int i = 0; i < boxes.length; i++) {
       final box = boxes[i];
       final crop = await _extractCrop(
-        imageBytes: imageBytes,
+        decodedImage: decodedImage,
         box: box,
         index: i,
         imageWidth: imageWidth,
@@ -60,6 +59,7 @@ class EvaluationRepository {
       // Report progress after each crop
       onCropExtracted?.call(i + 1, boxes.length);
     }
+    decodedImage.dispose();
 
     return DetectionResult(
       crops: crops,
@@ -70,9 +70,9 @@ class EvaluationRepository {
     );
   }
 
-  /// Extract a single crop from the image
+  /// Extract a single crop from the already-decoded image
   Future<CropItem?> _extractCrop({
-    required Uint8List imageBytes,
+    required ui.Image decodedImage,
     required Map<String, dynamic> box,
     required int index,
     required int imageWidth,
@@ -96,18 +96,12 @@ class EvaluationRepository {
       final cropHeight = y2 - y1;
       if (cropWidth <= 0 || cropHeight <= 0) return null;
 
-      // Decode image
-      final codec = await ui.instantiateImageCodec(imageBytes);
-      final frame = await codec.getNextFrame();
-      final fullImage = frame.image;
-
-      // Create crop using canvas
+      // Create crop using canvas (reuses the already-decoded image)
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
 
-      // Draw cropped region
       canvas.drawImageRect(
-        fullImage,
+        decodedImage,
         Rect.fromLTWH(x1.toDouble(), y1.toDouble(), cropWidth.toDouble(), cropHeight.toDouble()),
         Rect.fromLTWH(0, 0, cropWidth.toDouble(), cropHeight.toDouble()),
         Paint(),
@@ -117,7 +111,6 @@ class EvaluationRepository {
       final croppedImage = await picture.toImage(cropWidth, cropHeight);
       final byteData = await croppedImage.toByteData(format: ui.ImageByteFormat.png);
 
-      fullImage.dispose();
       croppedImage.dispose();
 
       if (byteData == null) return null;

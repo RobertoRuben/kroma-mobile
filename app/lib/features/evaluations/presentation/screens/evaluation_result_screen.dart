@@ -1,10 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:ultralytics_yolo_example/core/core.dart';
 import 'package:ultralytics_yolo_example/features/evaluations/domain/models/models.dart';
 import 'package:ultralytics_yolo_example/features/evaluations/presentation/controllers/evaluation_controller.dart';
@@ -122,65 +118,6 @@ class _EvaluationResultScreenState extends State<EvaluationResultScreen> {
     );
   }
 
-  bool _isDownloading = false;
-
-  Future<void> _downloadAllAnnotatedImages() async {
-    if (_isDownloading) return;
-
-    final evaluations = _controller.imageEvaluations;
-    final annotatedImages = evaluations
-        .where((e) => e.annotatedImage != null)
-        .toList();
-
-    if (annotatedImages.isEmpty) return;
-
-    setState(() => _isDownloading = true);
-
-    try {
-      final tempDir = await getTemporaryDirectory();
-      int saved = 0;
-
-      for (int i = 0; i < annotatedImages.length; i++) {
-        final imgEval = annotatedImages[i];
-        final name = 'kroma_anotada_${i + 1}_${DateTime.now().millisecondsSinceEpoch}';
-        final filePath = '${tempDir.path}/$name.png';
-
-        final file = File(filePath);
-        await file.writeAsBytes(imgEval.annotatedImage!);
-        await Gal.putImage(filePath, album: 'Kroma');
-
-        if (await file.exists()) await file.delete();
-        saved++;
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$saved imagen${saved > 1 ? 'es' : ''} guardada${saved > 1 ? 's' : ''} en galería'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: AppColors.destructive,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -248,7 +185,6 @@ class _EvaluationResultScreenState extends State<EvaluationResultScreen> {
         globalAvgConfidence: _controller.getGlobalAverageConfidence(),
         onBack: _controller.backToCropReview,
         onSave: _showSaveSuccess,
-        onDownloadAll: _downloadAllAnnotatedImages,
       );
     }
 

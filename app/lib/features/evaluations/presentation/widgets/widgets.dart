@@ -1,10 +1,16 @@
+export 'captured_image_tile.dart';
 export 'classification_result_view.dart';
 export 'crop_action_bar.dart';
 export 'crop_gallery.dart';
+export 'crop_image_nav_bar.dart';
 export 'crop_item_card.dart';
+export 'crop_preview_dialog.dart';
 export 'crop_results_list.dart';
+export 'evaluation_error_view.dart';
+export 'evaluation_option_card.dart';
 export 'global_stats_section.dart';
 export 'image_picker_sheet.dart';
 export 'pagination_bar.dart';
+export 'processing_view.dart';
 export 'result_image_nav_bar.dart';
 export 'stats_section.dart';
